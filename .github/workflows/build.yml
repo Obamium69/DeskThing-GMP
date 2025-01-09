@@ -1,0 +1,40 @@
+name: Build DeskThing-GMP
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '23'
+
+    - name: Install dependencies
+      run: |
+        cd src  # Wechselt in den src-Ordner
+        npm install  # Installiert die Abhängigkeiten aus der package.json im src-Ordner
+        npm install --os=linux --cpu=x64 sharp 
+
+
+    - name: Build project
+      run: |
+        cd src  # Wechselt in den src-Ordner
+        npm run build  # Führt den Build-Befehl im src-Ordner aus
+
+    - name: Archive build output (optional)
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-output
+        path: src/dist/  # Der Pfad zum dist-Ordner innerhalb des src-Ordners
