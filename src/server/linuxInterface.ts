@@ -1,6 +1,6 @@
 import * as dbus from "dbus-next";
 import * as dbusnative from "dbus-native";
-import sharp from 'sharp';
+import sharp from "sharp";
 
 type SongData = {
   id: string;
@@ -29,7 +29,9 @@ class linuxPlayer {
   private serviceNameBus: any;
   private isUpdating: boolean;
   private updateTimeout: number;
-
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
   private currentId: string;
 
   constructor(DeskThing: any) {
@@ -106,7 +108,7 @@ class linuxPlayer {
     if (this.player === null) {
       await this.init();
     }
-    
+    await this.sleep(1000);
     const properties = await this.playerObjectProperties.GetAll(
       "org.mpris.MediaPlayer2.Player"
     );
@@ -128,63 +130,70 @@ class linuxPlayer {
 
       let thumbnail = null;
 
-  // Inline-Implementierung von encodeImageFromUrl
-  const encodeImageFromUrl = async (
-    url: string,
-    type: "jpeg" | "gif" = "jpeg",
-    retries = 3
-  ): Promise<string> => {
-    try {
-      console.log(`Fetching ${type} data from ${url}...`);
+      // Inline-Implementierung von encodeImageFromUrl
+      const encodeImageFromUrl = async (
+        url: string,
+        type: "jpeg" | "gif" = "jpeg",
+        retries = 3
+      ): Promise<string> => {
+        try {
+          console.log(`Fetching ${type} data from ${url}...`);
 
-      const isLocalFile = url.startsWith("file://");
-      const filePath = isLocalFile ? url.replace("file://", "") : url;
+          const isLocalFile = url.startsWith("file://");
+          const filePath = isLocalFile ? url.replace("file://", "") : url;
 
-      // Fetch image data
-      let imageBuffer: Buffer;
+          // Fetch image data
+          let imageBuffer: Buffer;
 
-      if (isLocalFile) {
-        console.log("Processing local file...");
-        imageBuffer = await sharp(filePath).toBuffer(); // Load the local file
-      } else {
-        console.log("Processing remote URL...");
-        const response = await fetch(url);
+          if (isLocalFile) {
+            console.log("Processing local file...");
+            imageBuffer = await sharp(filePath).toBuffer(); // Load the local file
+          } else {
+            console.log("Processing remote URL...");
+            const response = await fetch(url);
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
+            if (!response.ok) {
+              throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+
+            imageBuffer = Buffer.from(await response.arrayBuffer()); // Load the remote file
+          }
+
+          // Convert the image to the desired format
+          const convertedBuffer = await sharp(imageBuffer)
+            .toFormat(type)
+            .toBuffer();
+
+          // Encode the image to Base64
+          return `data:image/${type};base64,${convertedBuffer.toString(
+            "base64"
+          )}`;
+        } catch (error) {
+          console.error(`Error encoding image from URL: ${url}`, error);
+
+          // Retry mechanism for transient errors
+          if (retries > 0) {
+            console.log(`Retrying... Attempts left: ${retries}`);
+            return encodeImageFromUrl(url, type, retries - 1);
+          }
+
+          throw new Error(
+            `Failed to encode image after multiple retries: ${url}`
+          );
         }
+      };
 
-        imageBuffer = Buffer.from(await response.arrayBuffer()); // Load the remote file
+      // Verwende die inline encodeImageFromUrl-Funktion
+      if (metaData["mpris:artUrl"] && metaData["mpris:artUrl"].value) {
+        try {
+          thumbnail = await encodeImageFromUrl(
+            metaData["mpris:artUrl"].value,
+            "jpeg"
+          );
+        } catch (error) {
+          console.error("Failed to fetch or convert image:", error);
+        }
       }
-
-      // Convert the image to the desired format
-      const convertedBuffer = await sharp(imageBuffer)
-        .toFormat(type)
-        .toBuffer();
-
-      // Encode the image to Base64
-      return `data:image/${type};base64,${convertedBuffer.toString("base64")}`;
-    } catch (error) {
-      console.error(`Error encoding image from URL: ${url}`, error);
-
-      // Retry mechanism for transient errors
-      if (retries > 0) {
-        console.log(`Retrying... Attempts left: ${retries}`);
-        return encodeImageFromUrl(url, type, retries - 1);
-      }
-
-      throw new Error(`Failed to encode image after multiple retries: ${url}`);
-    }
-  };
-
-  // Verwende die inline encodeImageFromUrl-Funktion
-  if (metaData["mpris:artUrl"] && metaData["mpris:artUrl"].value) {
-    try {
-      thumbnail = await encodeImageFromUrl(metaData["mpris:artUrl"].value, "jpeg");
-    } catch (error) {
-      console.error("Failed to fetch or convert image:", error);
-    }
-  }
 
       const response = {
         type: "song",
@@ -288,19 +297,18 @@ class linuxPlayer {
     return await this.player.SetPosition(trackId, seek);
   }
 
-  public async Volume(volume: number) {
+  public async setVolume(volume: number) {
     this.setUpdate();
     if (this.player === null) {
       await this.init();
     }
-    const vol = new dbus.Variant("d", Math.round(volume / 100));
+    const vol = new dbus.Variant("d",(volume / 100));
     return await this.playerObjectProperties.Set(
       "org.mpris.MediaPlayer2.Player",
       "Volume",
       vol
     );
   }
-
   public async setRepeat(state: string) {
     this.setUpdate();
     if (this.player === null) {
