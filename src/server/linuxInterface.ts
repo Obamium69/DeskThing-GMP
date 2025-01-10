@@ -61,8 +61,9 @@ class linuxPlayer {
     const mediaPlayerPrefixes = [
       "org.mpris.MediaPlayer2.spotify",
       "org.mpris.MediaPlayer2.firefox.instance_",
-      "org.mpris.MediaPlayer2.chromium.instance_",
+      "org.mpris.MediaPlayer2.chromium.instance",
       "org.mpris.MediaPlayer2.google-chrome.instance_",
+      "org.mpris.MediaPlayer2.YoutubeMusic",
     ];
 
     const names: string[] = await new Promise((resolve, reject) => {
