@@ -13,7 +13,7 @@ type SongData = {
   shuffle_state: string;
   repeat_state: string;
   track_progress: number;
-   track_duration: number;
+  track_duration: number;
   can_play: boolean;
   can_change_volume: boolean;
   playlist: string;
@@ -288,15 +288,21 @@ class linuxPlayer {
       await this.init();
     }
     console.log(position);
-    const trackId = (
+    // Get the Metadata which includes both the track id and its length.
+    const metadata = (
       await this.playerObjectProperties.Get(
         "org.mpris.MediaPlayer2.Player",
         "Metadata"
       )
-    ).value["mpris:trackid"].value;
-    const seek = BigInt(position * 1000);
-    return await this.player.SetPosition(trackId, seek);
-  }
+    ).value;
+    const trackId = metadata["mpris:trackid"].value;
+    // Retrieve track length in microseconds.
+    const trackLength = Number(metadata["mpris:length"].value);
+    // Map the input 'position' from a 0-10000 scale to the track length in microseconds.
+    // When position is 10000, it will correspond exactly to trackLength.
+    const seekValue = BigInt(Math.floor((position / 10000) * trackLength));
+    return await this.player.SetPosition(trackId, seekValue);
+}
 
   public async setVolume(volume: number) {
     this.setUpdate();
