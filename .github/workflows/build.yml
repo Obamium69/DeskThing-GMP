@@ -34,7 +34,7 @@ jobs:
         npm run build  # Führt den Build-Befehl im src-Ordner aus
 
     - name: Archive build output (optional)
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: build-output
         path: src/dist/  # Der Pfad zum dist-Ordner innerhalb des src-Ordners
