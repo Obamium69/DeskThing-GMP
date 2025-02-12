@@ -13,7 +13,7 @@ type SongData = {
   shuffle_state: string;
   repeat_state: string;
   track_progress: number;
-  track_length: number;
+   track_duration: number;
   can_play: boolean;
   can_change_volume: boolean;
   playlist: string;
@@ -109,7 +109,6 @@ class linuxPlayer {
     if (this.player === null) {
       await this.init();
     }
-    await this.sleep(1000);
     const properties = await this.playerObjectProperties.GetAll(
       "org.mpris.MediaPlayer2.Player"
     );
@@ -137,6 +136,7 @@ class linuxPlayer {
         type: "jpeg" | "gif" = "jpeg",
         retries = 3
       ): Promise<string> => {
+
         try {
           console.log(`Fetching ${type} data from ${url}...`);
 
@@ -205,10 +205,10 @@ class linuxPlayer {
           artist: metaData["xesam:artist"]?.value?.[0] || "Unknown",
           track_name: metaData["xesam:title"].value,
           thumbnail: thumbnail,
-          track_length:
-            Number(metaData["mpris:length"]?.value / BigInt(1000)) || 0,
+           track_duration:
+        Number(metaData["mpris:length"]?.value / BigInt(1000000)) || 0,
           track_progress:
-            Number(properties.Position?.value / BigInt(1000)) || 0,
+        Number(properties.Position?.value / BigInt(1000000)) || 0,
           is_playing: properties.PlaybackStatus?.value === "Playing",
           volume: (properties.Volume?.value || 0) * 100,
           shuffle_state: properties.Shuffle?.value || false,
@@ -233,10 +233,10 @@ class linuxPlayer {
             repeat_state: properties.LoopStatus?.value || "None",
             can_play: properties.CanPlay?.value || false,
             can_change_volume: true,
-            track_length:
-              Number(metaData["mpris:length"]?.value / BigInt(1000)) || 0,
+             track_duration:
+              Number(metaData["mpris:length"]?.value / BigInt(1000000)) || 0,
             track_progress:
-              Number(properties.Position?.value / BigInt(1000)) || 0,
+              Number(properties.Position?.value / BigInt(1000000)) || 0,
           },
         };
 
